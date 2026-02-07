@@ -1,5 +1,5 @@
 # pylint: disable=duplicate-code
-"""Support for IntesisHome and airconwithme Smart AC Controllers."""
+"""Support for IntesisACCloud and airconwithme Smart AC Controllers."""
 from __future__ import annotations
 
 import logging
@@ -123,7 +123,7 @@ async def async_setup_platform(
     async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType | None = None
 ) -> None:
-    """Create the IntesisHome climate devices."""
+    """Create the IntesisACCloud climate devices."""
     ih_user = config.get(CONF_USERNAME)
     ih_host = config.get(CONF_HOST)
     ih_pass = config.get(CONF_PASSWORD)
@@ -173,7 +173,7 @@ async def async_setup_platform(
 
 # pylint: disable=too-many-instance-attributes, too-many-arguments, too-many-public-methods
 class IntesisAC(ClimateEntity):
-    """Represents an Intesishome air conditioning device."""
+    """Represents an IntesisACCloud air conditioning device."""
 
     _enable_turn_on_off_backwards_compatibility = False
 
@@ -254,7 +254,7 @@ class IntesisAC(ClimateEntity):
             try:
                 await self._controller.connect()
             except IHConnectionError as ex:
-                _LOGGER.error("Exception connecting to IntesisHome: %s", ex)
+                _LOGGER.error("Exception connecting to IntesisACCloud: %s", ex)
                 raise PlatformNotReady from ex
 
     @property
@@ -264,7 +264,7 @@ class IntesisAC(ClimateEntity):
 
     @property
     def temperature_unit(self):
-        """Intesishome API uses celsius on the backend."""
+        """IntesisACCloud API uses celsius on the backend."""
         return UnitOfTemperature.CELSIUS
 
     @property

@@ -1,5 +1,5 @@
 # pylint: disable=duplicate-code
-"""Config flow for IntesisHome."""
+"""Config flow for IntesisACCloud."""
 import logging
 
 from pyintesishome import (
@@ -30,7 +30,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class IntesisConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for IntesisHome."""
+    """Handle a config flow for IntesisACCloud."""
 
     VERSION = 1
 

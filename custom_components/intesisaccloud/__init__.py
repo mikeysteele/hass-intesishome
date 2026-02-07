@@ -7,8 +7,8 @@ import asyncio
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-DOMAIN = "intesishome"
-PLATFORMS = ["climate"]
+DOMAIN = "intesisaccloud"
+PLATFORMS = ["climate", "switch"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -16,7 +16,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = entry.data
 
-    await hass.config_entries.async_forward_entry_setups(entry, ["climate"])
+    await hass.config_entries.async_forward_entry_setups(entry, ["climate", "switch"])
 
     return True
 
@@ -27,7 +27,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     unload_ok = all(
         await asyncio.gather(
-            *[hass.config_entries.async_forward_entry_unload(entry, "climate")]
+            *[hass.config_entries.async_forward_entry_unload(entry, "climate", "switch")]
         )
     )
     if unload_ok:

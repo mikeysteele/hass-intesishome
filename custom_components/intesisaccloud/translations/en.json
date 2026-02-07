@@ -24,7 +24,7 @@
       "unknown": "An unknown error occurred.",
       "no_devices": "There are no devices linked to this account.",
       "invalid_auth": "Invalid username or password.",
-      "cannot_connect": "An error occurred connecting to the IntesisHome API."
+      "cannot_connect": "An error occurred connecting to the IntesisACCloud API."
     }
   }
 }
