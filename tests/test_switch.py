@@ -1,7 +1,8 @@
-import pytest
-from unittest.mock import MagicMock, AsyncMock, call
-from custom_components.intesisaccloud.switch import async_setup_entry, IntesisZoneSwitch
+from unittest.mock import MagicMock
+
 from custom_components.intesisaccloud import DOMAIN
+from custom_components.intesisaccloud.switch import IntesisZoneSwitch, async_setup_entry
+
 
 async def test_switch_setup_discovery(hass, mock_controller):
     """Test discovery of zone switches."""
@@ -13,13 +14,13 @@ async def test_switch_setup_discovery(hass, mock_controller):
         "zone_status_2": 0,      # Off
         "zone_status_3": 7,      # Spill (should be skipped)
     }
-    
+
     mock_controller.get_devices.return_value = {device_id: device_info}
-    
+
     async_add_entities = MagicMock()
     config_entry = MagicMock()
     config_entry.unique_id = "test_entry"
-    
+
     # Ensure structure exists
     hass.data[DOMAIN] = {"controller": {"test_entry": mock_controller}}
 
@@ -28,7 +29,7 @@ async def test_switch_setup_discovery(hass, mock_controller):
     # Verify we added entities
     assert async_add_entities.call_count == 1
     entities = async_add_entities.call_args[0][0]
-    
+
     # We expect 2 entities (Zone 1 and Zone 2), Zone 3 is spill
     assert len(entities) == 2
     assert entities[0].unique_id == "12345_zone_1"
@@ -40,10 +41,10 @@ async def test_switch_operations(hass, mock_controller):
     """Test turn on/off operations."""
     device_id = "12345"
     zone_index = 1
-    
+
     # Mock devices for __init__
     mock_controller.get_devices.return_value = {device_id: {"name": "Test AC"}}
-    
+
     entity = IntesisZoneSwitch(mock_controller, device_id, zone_index)
     entity.hass = hass
     entity.async_write_ha_state = MagicMock()
@@ -60,10 +61,10 @@ async def test_switch_state(hass, mock_controller):
     """Test switch state reporting."""
     device_id = "12345"
     zone_index = 1
-    
+
     # Mock devices for __init__
     mock_controller.get_devices.return_value = {device_id: {"name": "Test AC"}}
-    
+
     entity = IntesisZoneSwitch(mock_controller, device_id, zone_index)
 
     # Test On (1)

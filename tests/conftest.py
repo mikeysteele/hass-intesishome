@@ -1,8 +1,11 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock
-from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+
 from custom_components.intesisaccloud import DOMAIN
+
 
 @pytest.fixture
 def hass():

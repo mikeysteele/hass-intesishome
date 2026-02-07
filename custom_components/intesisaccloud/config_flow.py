@@ -1,13 +1,11 @@
 # pylint: disable=duplicate-code
 """Config flow for IntesisACCloud."""
-import logging
-from typing import TYPE_CHECKING
+from __future__ import annotations
 
-if TYPE_CHECKING:
-    from pyintesishome import IntesisBase
+import logging
+from pyintesishome import IntesisBase
 
 import voluptuous as vol
-
 from homeassistant import config_entries, exceptions
 from homeassistant.const import CONF_DEVICE, CONF_HOST, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.data_entry_flow import FlowResult
@@ -69,7 +67,7 @@ class IntesisConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the device connection step."""
         device_type = self._data.get(CONF_DEVICE)
         errors: dict[str, str] = {}
-        controller: "IntesisBase" = None
+        controller: IntesisBase | None = None
 
         from pyintesishome import (
             IHAuthenticationError,

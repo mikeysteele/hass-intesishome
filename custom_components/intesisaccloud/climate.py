@@ -4,26 +4,8 @@ from __future__ import annotations
 
 import logging
 from random import randrange
-from typing import NamedTuple
-
-from pyintesishome import (
-    IHAuthenticationError,
-    IHConnectionError,
-    IntesisBase,
-    IntesisBox,
-    IntesisHome,
-    IntesisHomeLocal,
-)
-from pyintesishome.const import (
-    DEVICE_AIRCONWITHME,
-    DEVICE_ANYWAIR,
-    DEVICE_INTESISBOX,
-    DEVICE_INTESISHOME,
-    DEVICE_INTESISHOME_LOCAL,
-)
 
 from homeassistant import config_entries, core
-from homeassistant.components.climate import ClimateEntity
 from homeassistant.components.climate import (
     ATTR_HVAC_MODE,
     PRESET_BOOST,
@@ -32,6 +14,7 @@ from homeassistant.components.climate import (
     SWING_HORIZONTAL,
     SWING_OFF,
     SWING_VERTICAL,
+    ClimateEntity,
     ClimateEntityFeature,
     HVACMode,
 )
@@ -48,7 +31,21 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
-
+from pyintesishome import (
+    IHAuthenticationError,
+    IHConnectionError,
+    IntesisBase,
+    IntesisBox,
+    IntesisHome,
+    IntesisHomeLocal,
+)
+from pyintesishome.const import (
+    DEVICE_AIRCONWITHME,
+    DEVICE_ANYWAIR,
+    DEVICE_INTESISBOX,
+    DEVICE_INTESISHOME,
+    DEVICE_INTESISHOME_LOCAL,
+)
 
 from . import DOMAIN
 
@@ -103,7 +100,7 @@ async def async_setup_entry(
     """Create climate entities from config flow."""
     config = config_entry.data
     if "controller" in hass.data[DOMAIN]:
-        controller = hass.data[DOMAIN]["controller"].pop(config_entry.unique_id)
+        controller = hass.data[DOMAIN]["controller"].get(config_entry.unique_id)
         ih_devices = controller.get_devices()
         if ih_devices:
             async_add_entities(
@@ -303,7 +300,7 @@ class IntesisAC(ClimateEntity):
     def preset_mode(self):
         """Return the current preset mode."""
         return self._preset
-    
+
     async def async_turn_on(self) -> None:
         """Turn device on."""
         self._power = True
@@ -527,7 +524,7 @@ class IntesisAC(ClimateEntity):
         else:
             swing = SWING_OFF
         return swing
-    
+
     @property
     def swing_horizontal_mode(self):
         """Return current horizontal swing mode."""
@@ -546,7 +543,7 @@ class IntesisAC(ClimateEntity):
     def swing_modes(self):
         """List of available vertical swing positions."""
         return self._swing_list
-    
+
     @property
     def swing_horizontal_modes(self):
         """List of available horizontal swing positions."""

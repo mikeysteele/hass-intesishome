@@ -4,12 +4,11 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from pyintesishome import IntesisBase
-
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from pyintesishome import IntesisBase
 
 from . import DOMAIN
 
@@ -30,7 +29,7 @@ async def async_setup_entry(
     for ih_device_id, device in ih_devices.items():
         # Zone Discovery
         number_of_zones = device.get("number_of_zones", 0)
-        
+
         if number_of_zones > 0:
             _LOGGER.debug(
                 "Device %s has %s zones. Discovering...", ih_device_id, number_of_zones
@@ -70,12 +69,12 @@ class IntesisZoneSwitch(SwitchEntity):
         """Return True if zone is on."""
         devices = self._controller.get_devices()
         state = devices[self._device_id].get(f"zone_status_{self._zone_index}")
-        
-        # 1 = On, 7 = Spill (but spill shouldn't be here if we filtered correctly, 
+
+        # 1 = On, 7 = Spill (but spill shouldn't be here if we filtered correctly,
         # unless it changed state dynamically to spill)
         # If it changes to spill dynamically, it should technically be ON?
         # User said: "Check number of zones... if status is spill... just don't create entity"
-        # Implies static check? Or dynamic? 
+        # Implies static check? Or dynamic?
         # "zone_status" updates dynamically.
         # If it becomes spill later, we probably should report it as ON if we already have the entity.
         # But 'spill' implies it's open for safety. So ON is correct.
@@ -99,7 +98,7 @@ class IntesisZoneSwitch(SwitchEntity):
         """Unsubscribe from updates."""
         self._controller.remove_update_callback(self.async_update_callback)
 
-    async def async_update_callback(self, device_id: str = None) -> None:
+    async def async_update_callback(self, device_id: str | None = None) -> None:
         """Update the entity's state."""
         if not device_id or self._device_id == device_id:
             self.async_schedule_update_ha_state(True)

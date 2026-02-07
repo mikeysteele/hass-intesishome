@@ -1,7 +1,7 @@
-import pytest
-from unittest.mock import MagicMock, AsyncMock
-from custom_components.intesisaccloud.climate import IntesisAC
 from homeassistant.components.climate import HVACMode
+
+from custom_components.intesisaccloud.climate import IntesisAC
+
 
 async def test_climate_entity_creation(hass, mock_controller):
     """Test successful creation of IntesisAC entity."""
@@ -10,7 +10,7 @@ async def test_climate_entity_creation(hass, mock_controller):
         "name": "Test AC",
         "widgets": [1, 2] # Mock widgets
     }
-    
+
     # Mock controller methods used in __init__
     mock_controller.get_devices.return_value = {device_id: device_info}
     mock_controller.device_type = "IntesisHome"
@@ -19,9 +19,9 @@ async def test_climate_entity_creation(hass, mock_controller):
     mock_controller.has_horizontal_swing.return_value = True
     mock_controller.get_fan_speed_list.return_value = ["low", "high"]
     mock_controller.get_mode_list.return_value = ["auto", "cool", "heat", "dry", "fan", "off"]
-    
+
     entity = IntesisAC(device_id, device_info, mock_controller)
-    
+
     assert entity.name == "Test AC"
     assert entity.unique_id == device_id
     assert entity.available is False  # explicit False init, updates to True on update
@@ -30,7 +30,7 @@ async def test_climate_update(hass, mock_controller):
     """Test entity update from controller."""
     device_id = "12345"
     device_info = {"name": "Test AC"}
-    
+
     mock_controller.device_type = "IntesisHome"
     mock_controller.has_setpoint_control.return_value = True
     mock_controller.has_vertical_swing.return_value = False
@@ -39,7 +39,7 @@ async def test_climate_update(hass, mock_controller):
     mock_controller.get_mode_list.return_value = ["cool"]
 
     entity = IntesisAC(device_id, device_info, mock_controller)
-    
+
     # Mock return values for async_update
     mock_controller.is_connected = True
     mock_controller.get_temperature.return_value = 22.0
