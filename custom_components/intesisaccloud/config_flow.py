@@ -1,22 +1,11 @@
 # pylint: disable=duplicate-code
 """Config flow for IntesisACCloud."""
 import logging
+from typing import TYPE_CHECKING
 
-from pyintesishome import (
-    IHAuthenticationError,
-    IHConnectionError,
-    IntesisBase,
-    IntesisBox,
-    IntesisHome,
-    IntesisHomeLocal,
-)
-from pyintesishome.const import (
-    DEVICE_AIRCONWITHME,
-    DEVICE_ANYWAIR,
-    DEVICE_INTESISBOX,
-    DEVICE_INTESISHOME,
-    DEVICE_INTESISHOME_LOCAL,
-)
+if TYPE_CHECKING:
+    from pyintesishome import IntesisBase
+
 import voluptuous as vol
 
 from homeassistant import config_entries, exceptions
@@ -42,6 +31,14 @@ class IntesisConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the initial device type selection step."""
         # unique_id = user_input["unique_id"]
         # await self.async_set_unique_id(unique_id)
+        from pyintesishome.const import (
+            DEVICE_AIRCONWITHME,
+            DEVICE_ANYWAIR,
+            DEVICE_INTESISBOX,
+            DEVICE_INTESISHOME,
+            DEVICE_INTESISHOME_LOCAL,
+        )
+
         errors: dict[str, str] = {}
         if user_input is None:
             user_input = {}
@@ -72,7 +69,22 @@ class IntesisConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the device connection step."""
         device_type = self._data.get(CONF_DEVICE)
         errors: dict[str, str] = {}
-        controller: IntesisBase = None
+        controller: "IntesisBase" = None
+
+        from pyintesishome import (
+            IHAuthenticationError,
+            IHConnectionError,
+            IntesisBox,
+            IntesisHome,
+            IntesisHomeLocal,
+        )
+        from pyintesishome.const import (
+            DEVICE_AIRCONWITHME,
+            DEVICE_ANYWAIR,
+            DEVICE_INTESISBOX,
+            DEVICE_INTESISHOME,
+            DEVICE_INTESISHOME_LOCAL,
+        )
 
         cloud_schema = vol.Schema(
             {
