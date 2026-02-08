@@ -45,7 +45,7 @@ async def test_switch_operations(hass, mock_controller):
     # Mock devices for __init__
     mock_controller.get_devices.return_value = {device_id: {"name": "Test AC"}}
 
-    entity = IntesisZoneSwitch(mock_controller, device_id, zone_index)
+    entity = IntesisZoneSwitch(mock_controller, device_id, zone_index, 1)
     entity.hass = hass
     entity.async_write_ha_state = MagicMock()
 
@@ -65,7 +65,7 @@ async def test_switch_state(hass, mock_controller):
     # Mock devices for __init__
     mock_controller.get_devices.return_value = {device_id: {"name": "Test AC"}}
 
-    entity = IntesisZoneSwitch(mock_controller, device_id, zone_index)
+    entity = IntesisZoneSwitch(mock_controller, device_id, zone_index, 1)
 
     # Test On (1)
     mock_controller.get_devices.return_value = {device_id: {"zone_status_1": 1}}

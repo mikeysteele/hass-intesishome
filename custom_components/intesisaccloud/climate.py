@@ -99,73 +99,23 @@ async def async_setup_entry(
 ) -> None:
     """Create climate entities from config flow."""
     config = config_entry.data
-    if "controller" in hass.data[DOMAIN]:
-        controller = hass.data[DOMAIN]["controller"].get(config_entry.unique_id)
-        ih_devices = controller.get_devices()
-        if ih_devices:
-            async_add_entities(
-                [
-                    IntesisAC(ih_device_id, device, controller)
-                    for ih_device_id, device in ih_devices.items()
-                ],
-                update_before_add=True,
-            )
-    else:
-        await async_setup_platform(hass, config, async_add_entities)
-
-
-async def async_setup_platform(
-    hass: core.HomeAssistant,
-    config: ConfigType,
-    async_add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType | None = None
-) -> None:
-    """Create the IntesisACCloud climate devices."""
-    ih_user = config.get(CONF_USERNAME)
-    ih_host = config.get(CONF_HOST)
-    ih_pass = config.get(CONF_PASSWORD)
-    device_type = config.get(CONF_DEVICE)
-    websession = async_get_clientsession(hass)
-
-    if device_type == DEVICE_INTESISBOX:
-        controller = IntesisBox(config[CONF_HOST], loop=hass.loop)
-        await controller.connect()
-    elif device_type == DEVICE_INTESISHOME_LOCAL:
-        controller = IntesisHomeLocal(
-            ih_host, ih_user, ih_pass, loop=hass.loop, websession=websession
-        )
-    else:
-        controller = IntesisHome(
-            ih_user,
-            ih_pass,
-            hass.loop,
-            websession=async_get_clientsession(hass),
-            device_type=device_type,
-        )
-    try:
-        await controller.poll_status()
-    except IHAuthenticationError:
-        _LOGGER.error("Invalid username or password")
-        return
-    except IHConnectionError as ex:
-        _LOGGER.error("Error connecting to the %s server", device_type)
-        raise PlatformNotReady from ex
-
-    if ih_devices := controller.get_devices():
+    """Create climate entities from config flow."""
+    controller = hass.data[DOMAIN]["controller"].get(config_entry.unique_id)
+    ih_devices = controller.get_devices()
+    if ih_devices:
         async_add_entities(
             [
                 IntesisAC(ih_device_id, device, controller)
                 for ih_device_id, device in ih_devices.items()
             ],
-            update_before_add=False,
+            update_before_add=True,
         )
     else:
-        _LOGGER.error(
-            "Error getting device list from %s API: %s",
-            device_type,
-            controller.error_message,
-        )
-        await controller.stop()
+        _LOGGER.warning("No devices found in controller for climate platform")
+
+
+
+
 
 
 # pylint: disable=too-many-instance-attributes, too-many-arguments, too-many-public-methods
@@ -248,11 +198,8 @@ class IntesisAC(ClimateEntity):
         self._controller.add_update_callback(self.async_update_callback)
 
         if self._device_type is not DEVICE_INTESISBOX:
-            try:
-                await self._controller.connect()
-            except IHConnectionError as ex:
-                _LOGGER.error("Exception connecting to IntesisACCloud: %s", ex)
-                raise PlatformNotReady from ex
+            # Controller is already connected in __init__.py
+            pass
 
     @property
     def name(self):
@@ -388,6 +335,7 @@ class IntesisAC(ClimateEntity):
         """Copy values from controller dictionary to climate device."""
         # Update values from controller's device dictionary
         self._connected = self._controller.is_connected
+        _LOGGER.debug("Climate entity update. Connected: %s", self._connected)
         self._current_temp = self._controller.get_temperature(self._device_id)
         self._fan_speed = self._controller.get_fan_speed(self._device_id)
         self._power = self._controller.is_on(self._device_id)
@@ -433,8 +381,6 @@ class IntesisAC(ClimateEntity):
     async def async_will_remove_from_hass(self):
         """Shutdown the controller when the device is being removed."""
         self._controller.remove_update_callback(self.async_update_callback)
-        await self._controller.stop()
-        self._controller = None
 
     @property
     def icon(self):

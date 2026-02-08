@@ -23,7 +23,7 @@ async def async_setup_entry(
     """Set up IntesisACCloud switch entities."""
     controller: IntesisBase = hass.data[DOMAIN]["controller"][config_entry.unique_id]
     ih_devices = controller.get_devices()
-
+    _LOGGER.debug("Found %s devices", len(ih_devices))
     entities = []
 
     for ih_device_id, device in ih_devices.items():
@@ -34,19 +34,26 @@ async def async_setup_entry(
             _LOGGER.debug(
                 "Device %s has %s zones. Discovering...", ih_device_id, number_of_zones
             )
-            for zone_index in range(1, number_of_zones + 1):
-                # Check initial status
-                zone_status = device.get(f"zone_status_{zone_index}")
+        else:
+            _LOGGER.debug(
+                "Device %s reports 0 zones. Full device data: %s", ih_device_id, device
+            )
 
-                _LOGGER.debug("Zone %s status: %s", zone_index, zone_status)
+        zone_friendly_index = 1
+        for zone_index in range(1, number_of_zones + 1):
+            # Check initial status
+            zone_status = device.get(f"zone_status_{zone_index}")
 
-                # Filter out spill zones (7)
-                if zone_status == 7 or zone_status == 'spill':
-                    _LOGGER.debug("Skipping spill zone %s for device %s", zone_index, ih_device_id)
-                    continue
+            _LOGGER.debug("Zone %s status: %s", zone_index, zone_status)
 
-                # Add entity for valid zone
-                entities.append(IntesisZoneSwitch(controller, ih_device_id, zone_index))
+            # Filter out spill zones (7)
+            if zone_status == 7 or zone_status == 'spill':
+                _LOGGER.debug("Skipping spill zone %s for device %s", zone_index, ih_device_id)
+                continue
+
+            # Add entity for valid zone
+            entities.append(IntesisZoneSwitch(controller, ih_device_id, zone_index, zone_friendly_index))
+            zone_friendly_index += 1
 
     if entities:
         async_add_entities(entities)
@@ -55,13 +62,14 @@ async def async_setup_entry(
 class IntesisZoneSwitch(SwitchEntity):
     """Representation of an IntesisACCloud Zone Switch."""
 
-    def __init__(self, controller: IntesisBase, device_id: str, zone_index: int) -> None:
+    def __init__(self, controller: IntesisBase, device_id: str, zone_index: int, zone_friendly_index: int) -> None:
         """Initialize the switch."""
         self._controller = controller
         self._device_id = device_id
         self._zone_index = zone_index
+        self._zone_friendly_index = zone_friendly_index
         self._device_name = controller.get_devices()[device_id].get("name")
-        self._attr_name = f"{self._device_name} Zone {zone_index}"
+        self._attr_name = f"{self._device_name} Zone {zone_friendly_index}"
         self._attr_unique_id = f"{device_id}_zone_{zone_index}"
 
     @property
