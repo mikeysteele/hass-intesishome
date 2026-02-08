@@ -36,7 +36,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN].setdefault("controller", {})
 
     device_type = entry.data.get(CONF_DEVICE)
-    _LOGGER.error("Initializing controller for device type: %s", device_type)
+    _LOGGER.debug("Initializing controller for device type: %s", device_type)
     
     try:
         if device_type == DEVICE_INTESISBOX:

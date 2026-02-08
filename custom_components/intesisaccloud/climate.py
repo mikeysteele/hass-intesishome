@@ -403,7 +403,7 @@ class IntesisAC(ClimateEntity):
                 DEVICE_AIRCONWITHME,
             ]:
                 # Add a random delay for cloud connections
-                reconnect_seconds = randrange(30, 600)
+                reconnect_seconds = randrange(10, 30)
 
             _LOGGER.info(
                 "Connection to %s API was lost. Reconnecting in %i seconds",
