@@ -17,12 +17,16 @@ async def test_switch_setup_discovery(hass, mock_controller):
 
     mock_controller.get_devices.return_value = {device_id: device_info}
 
+    # Create Mock Manager
+    mock_manager = MagicMock()
+    mock_manager.controller = mock_controller
+    mock_manager.get_devices.return_value = {device_id: device_info}
+    # Manager is passed in via hass.data
+    hass.data[DOMAIN] = {"controller": {"test_entry": mock_manager}}
+
     async_add_entities = MagicMock()
     config_entry = MagicMock()
     config_entry.unique_id = "test_entry"
-
-    # Ensure structure exists
-    hass.data[DOMAIN] = {"controller": {"test_entry": mock_controller}}
 
     await async_setup_entry(hass, config_entry, async_add_entities)
 
@@ -45,7 +49,10 @@ async def test_switch_operations(hass, mock_controller):
     # Mock devices for __init__
     mock_controller.get_devices.return_value = {device_id: {"name": "Test AC"}}
 
-    entity = IntesisZoneSwitch(mock_controller, device_id, zone_index, 1)
+    mock_manager = MagicMock()
+    mock_manager.controller = mock_controller
+
+    entity = IntesisZoneSwitch(mock_manager, device_id, zone_index, 1)
     entity.hass = hass
     entity.async_write_ha_state = MagicMock()
 
@@ -64,8 +71,11 @@ async def test_switch_state(hass, mock_controller):
 
     # Mock devices for __init__
     mock_controller.get_devices.return_value = {device_id: {"name": "Test AC"}}
+    
+    mock_manager = MagicMock()
+    mock_manager.controller = mock_controller
 
-    entity = IntesisZoneSwitch(mock_controller, device_id, zone_index, 1)
+    entity = IntesisZoneSwitch(mock_manager, device_id, zone_index, 1)
 
     # Test On (1)
     mock_controller.get_devices.return_value = {device_id: {"zone_status_1": 1}}

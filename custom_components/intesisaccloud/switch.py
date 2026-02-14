@@ -21,7 +21,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up IntesisACCloud switch entities."""
-    controller: IntesisBase = hass.data[DOMAIN]["controller"][config_entry.unique_id]
+    controller = hass.data[DOMAIN]["controller"][config_entry.unique_id]
     ih_devices = controller.get_devices()
     _LOGGER.debug("Found %s devices", len(ih_devices))
     entities = []
@@ -62,13 +62,14 @@ async def async_setup_entry(
 class IntesisZoneSwitch(SwitchEntity):
     """Representation of an IntesisACCloud Zone Switch."""
 
-    def __init__(self, controller: IntesisBase, device_id: str, zone_index: int, zone_friendly_index: int) -> None:
+    def __init__(self, manager, device_id: str, zone_index: int, zone_friendly_index: int) -> None:
         """Initialize the switch."""
-        self._controller = controller
+        self._manager = manager
+        self._controller: IntesisBase = manager.controller
         self._device_id = device_id
         self._zone_index = zone_index
         self._zone_friendly_index = zone_friendly_index
-        self._device_name = controller.get_devices()[device_id].get("name")
+        self._device_name = self._controller.get_devices()[device_id].get("name")
         self._attr_name = f"{self._device_name} Zone {zone_friendly_index}"
         self._attr_unique_id = f"{device_id}_zone_{zone_index}"
 
@@ -76,6 +77,9 @@ class IntesisZoneSwitch(SwitchEntity):
     def is_on(self) -> bool | None:
         """Return True if zone is on."""
         devices = self._controller.get_devices()
+        if self._device_id not in devices:
+            return None
+
         state = devices[self._device_id].get(f"zone_status_{self._zone_index}")
 
         # 1 = On, 7 = Spill (but spill shouldn't be here if we filtered correctly,
@@ -100,11 +104,11 @@ class IntesisZoneSwitch(SwitchEntity):
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to updates."""
-        self._controller.add_update_callback(self.async_update_callback)
+        self._manager.add_update_callback(self.async_update_callback)
 
     async def async_will_remove_from_hass(self) -> None:
         """Unsubscribe from updates."""
-        self._controller.remove_update_callback(self.async_update_callback)
+        self._manager.remove_update_callback(self.async_update_callback)
 
     async def async_update_callback(self, device_id: str | None = None) -> None:
         """Update the entity's state."""

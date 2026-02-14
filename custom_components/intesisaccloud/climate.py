@@ -99,7 +99,6 @@ async def async_setup_entry(
 ) -> None:
     """Create climate entities from config flow."""
     config = config_entry.data
-    """Create climate entities from config flow."""
     controller = hass.data[DOMAIN]["controller"].get(config_entry.unique_id)
     ih_devices = controller.get_devices()
     if ih_devices:
@@ -112,11 +111,6 @@ async def async_setup_entry(
         )
     else:
         _LOGGER.warning("No devices found in controller for climate platform")
-
-
-
-
-
 
 # pylint: disable=too-many-instance-attributes, too-many-arguments, too-many-public-methods
 class IntesisAC(ClimateEntity):
@@ -336,6 +330,13 @@ class IntesisAC(ClimateEntity):
         # Update values from controller's device dictionary
         self._connected = self._controller.is_connected
         _LOGGER.debug("Climate entity update. Connected: %s", self._connected)
+
+        if not self._controller.get_device(self._device_id):
+            _LOGGER.debug(
+                "Device %s not found in controller. Skipping update", self._device_id
+            )
+            return
+
         self._current_temp = self._controller.get_temperature(self._device_id)
         self._fan_speed = self._controller.get_fan_speed(self._device_id)
         self._power = self._controller.is_on(self._device_id)
@@ -416,20 +417,13 @@ class IntesisAC(ClimateEntity):
                     await self._controller.connect()
                     _LOGGER.info("Reconnected to %s API", self._device_type)
                 except IHConnectionError:
-                    if retries < MAX_RETRIES:
-                        wait_time = min(2**retries, MAX_WAIT_TIME)
-                        _LOGGER.info(
-                            "Failed to reconnect to %s API. Retrying in %i seconds",
-                            self._device_type,
-                            wait_time,
-                        )
-                        async_call_later(self.hass, wait_time, try_connect(retries + 1))
-                    else:
-                        _LOGGER.error(
-                            "Failed to reconnect to %s API after %i retries. Giving up",
-                            self._device_type,
-                            MAX_RETRIES,
-                        )
+                    wait_time = min(2**retries, MAX_WAIT_TIME)
+                    _LOGGER.info(
+                        "Failed to reconnect to %s API. Retrying in %i seconds",
+                        self._device_type,
+                        wait_time,
+                    )
+                    async_call_later(self.hass, wait_time, try_connect(retries + 1))
 
                 async_call_later(self.hass, reconnect_seconds, try_connect(0))
 

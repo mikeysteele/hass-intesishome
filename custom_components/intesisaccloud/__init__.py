@@ -6,7 +6,7 @@ import asyncio
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-
+from .manager import IntesisManager
 DOMAIN = "intesisaccloud"
 PLATFORMS = ["climate", "switch"]
 
@@ -30,6 +30,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     from pyintesishome.const import (
         DEVICE_INTESISBOX,
         DEVICE_INTESISHOME_LOCAL,
+        DEVICE_INTESISHOME,
+        DEVICE_ANYWAIR,
+        DEVICE_AIRCONWITHME,
     )
 
     hass.data.setdefault(DOMAIN, {})
@@ -38,42 +41,35 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     device_type = entry.data.get(CONF_DEVICE)
     _LOGGER.debug("Initializing controller for device type: %s", device_type)
     
-    try:
-        if device_type == DEVICE_INTESISBOX:
-            controller = IntesisBox(entry.data[CONF_HOST], loop=hass.loop)
-        elif device_type == DEVICE_INTESISHOME_LOCAL:
-            controller = IntesisHomeLocal(
-                entry.data[CONF_HOST],
-                entry.data[CONF_USERNAME],
-                entry.data[CONF_PASSWORD],
-                loop=hass.loop,
-                websession=async_get_clientsession(hass),
-            )
-        else:
-            controller = IntesisHome(
-                entry.data[CONF_USERNAME],
-                entry.data[CONF_PASSWORD],
-                loop=hass.loop,
-                device_type=device_type,
-                websession=async_get_clientsession(hass),
-            )
+    if device_type == DEVICE_INTESISBOX:
+        controller = IntesisBox(entry.data[CONF_HOST], loop=hass.loop)
+    elif device_type == DEVICE_INTESISHOME_LOCAL:
+        controller = IntesisHomeLocal(
+            entry.data[CONF_HOST],
+            entry.data[CONF_USERNAME],
+            entry.data[CONF_PASSWORD],
+            loop=hass.loop,
+            websession=async_get_clientsession(hass),
+        )
+    else:
+        controller = IntesisHome(
+            entry.data[CONF_USERNAME],
+            entry.data[CONF_PASSWORD],
+            loop=hass.loop,
+            device_type=device_type,
+            websession=async_get_clientsession(hass),
+        )
 
-        _LOGGER.debug("Connecting to controller...")
-        await controller.connect()
-        _LOGGER.debug("Connection successful. Devices: %s", controller.get_devices())
+    manager = IntesisManager(hass, controller, entry, device_type)
+    try:
+        await manager.async_connect()
     except (IHAuthenticationError, IHConnectionError) as ex:
         _LOGGER.error("Connection failed: %s", ex)
         raise ConfigEntryNotReady from ex
 
-    hass.data[DOMAIN]["controller"][entry.unique_id] = controller
+    hass.data[DOMAIN]["controller"][entry.unique_id] = manager
 
     _LOGGER.debug("Forwarding entry setups for climate and switch")
-    try:
-        import custom_components.intesisaccloud.switch
-        _LOGGER.debug("Successfully imported switch module")
-    except Exception as e:
-        _LOGGER.error("Failed to import switch module: %s", e)
-
     await hass.config_entries.async_forward_entry_setups(entry, ["climate", "switch"])
 
     return True
@@ -84,9 +80,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:
-        controller = hass.data[DOMAIN]["controller"].pop(entry.unique_id)
-        if controller:
-            await controller.stop()
+        manager = hass.data[DOMAIN]["controller"].pop(entry.unique_id)
+        if manager:
+            await manager.stop()
             _LOGGER.debug("Controller stopped")
 
     return unload_ok
+
+
