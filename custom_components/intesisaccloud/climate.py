@@ -29,6 +29,7 @@ from homeassistant.const import (
 from homeassistant.exceptions import PlatformNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from pyintesishome import (
@@ -123,7 +124,8 @@ class IntesisAC(ClimateEntity):
         self._controller: IntesisBase = controller
         self._device_id: str = ih_device_id
         self._ih_device: dict[str, dict[str, object]] = ih_device
-        self._device_name: str = ih_device.get("name")
+        device_name = ih_device.get("name")
+        self._device_name: str = str(device_name) if device_name is not None else "Intesis AC"
         self._device_type: str = controller.device_type
         self._connected: bool = False
         self._setpoint_step: float = 1.0
@@ -199,6 +201,16 @@ class IntesisAC(ClimateEntity):
     def name(self):
         """Return the name of the AC device."""
         return self._device_name
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device registry information for this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._device_id)},
+            name=self._device_name,
+            manufacturer="Intesis",
+            model=self._ih_device.get("model"),
+        )
 
     @property
     def temperature_unit(self):
@@ -397,35 +409,10 @@ class IntesisAC(ClimateEntity):
         if self._controller and not self._controller.is_connected and self._connected:
             # Connection has dropped
             self._connected = False
-            reconnect_seconds = 30
-            if self._device_type in [
-                DEVICE_INTESISHOME,
-                DEVICE_ANYWAIR,
-                DEVICE_AIRCONWITHME,
-            ]:
-                # Add a random delay for cloud connections
-                reconnect_seconds = randrange(10, 30)
-
             _LOGGER.info(
-                "Connection to %s API was lost. Reconnecting in %i seconds",
+                "Connection to %s API was lost",
                 self._device_type,
-                reconnect_seconds,
             )
-
-            async def try_connect(retries):
-                try:
-                    await self._controller.connect()
-                    _LOGGER.info("Reconnected to %s API", self._device_type)
-                except IHConnectionError:
-                    wait_time = min(2**retries, MAX_WAIT_TIME)
-                    _LOGGER.info(
-                        "Failed to reconnect to %s API. Retrying in %i seconds",
-                        self._device_type,
-                        wait_time,
-                    )
-                    async_call_later(self.hass, wait_time, try_connect(retries + 1))
-
-                async_call_later(self.hass, reconnect_seconds, try_connect(0))
 
         if self._controller.is_connected and not self._connected:
             # Connection has been restored

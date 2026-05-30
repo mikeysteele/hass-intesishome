@@ -100,9 +100,16 @@ class IntesisManager:
                         self.device_type,
                         wait_time,
                     )
-                    async_call_later(self.hass, wait_time, try_connect(retries + 1))
+                    
+                    async def retry_callback(_now):
+                        await try_connect(retries + 1)
+                        
+                    async_call_later(self.hass, wait_time, retry_callback)
 
-            async_call_later(self.hass, reconnect_seconds, try_connect(0))
+            async def initial_callback(_now):
+                await try_connect(0)
+
+            async_call_later(self.hass, reconnect_seconds, initial_callback)
 
         if self.controller.is_connected and not self._connected:
              self._connected = True

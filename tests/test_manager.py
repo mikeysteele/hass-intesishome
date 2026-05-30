@@ -80,12 +80,14 @@ async def test_manager_reconnection_logic(hass, mock_controller, config_entry):
         from pyintesishome import IHConnectionError
         mock_controller.connect.side_effect = IHConnectionError("Fail")
 
-        await retry_func
+        await retry_func(None)
         
         # Should verify it scheduled another retry
         mock_controller.connect.assert_awaited()
         
-        # Cleanup: close the recursive coroutine to avoid RuntimeWarning
+        # Verify another retry was scheduled
+        assert mock_call_later.call_count == 2
         args2, _ = mock_call_later.call_args
-        coro = args2[2]
-        coro.close()
+        delay2 = args2[1]
+        retry_func2 = args2[2]
+        assert delay2 == 1 # 2**0

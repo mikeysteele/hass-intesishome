@@ -8,6 +8,7 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.device_registry import DeviceInfo
 from pyintesishome import IntesisBase
 
 from . import DOMAIN
@@ -69,9 +70,20 @@ class IntesisZoneSwitch(SwitchEntity):
         self._device_id = device_id
         self._zone_index = zone_index
         self._zone_friendly_index = zone_friendly_index
-        self._device_name = self._controller.get_devices()[device_id].get("name")
+        device_name = self._controller.get_devices()[device_id].get("name")
+        self._device_name = str(device_name) if device_name is not None else "Intesis AC"
         self._attr_name = f"{self._device_name} Zone {zone_friendly_index}"
         self._attr_unique_id = f"{device_id}_zone_{zone_index}"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device registry information for this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._device_id)},
+            name=self._device_name,
+            manufacturer="Intesis",
+            model=self._controller.get_devices()[self._device_id].get("model"),
+        )
 
     @property
     def is_on(self) -> bool | None:
