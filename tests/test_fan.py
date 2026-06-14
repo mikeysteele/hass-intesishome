@@ -56,8 +56,14 @@ async def test_fan_operations(hass, mock_controller):
     entity.hass = hass
     entity.async_write_ha_state = MagicMock()
 
-    # Test Turn On
+    # Test Turn On (direct call, no args)
     await entity.async_turn_on()
+    mock_controller.set_zone_status.assert_called_with(device_id, zone_index, 'on')
+
+    # Test Turn On the way HA's fan service dispatcher actually calls it —
+    # it passes percentage and preset_mode as positional args even when None
+    mock_controller.set_zone_status.reset_mock()
+    await entity.async_turn_on(None, None)
     mock_controller.set_zone_status.assert_called_with(device_id, zone_index, 'on')
 
     # Test Turn Off
