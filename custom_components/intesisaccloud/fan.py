@@ -101,7 +101,7 @@ class IntesisZoneFan(FanEntity):
         # Spill implies it's open for safety, so ON is correct.
         return state in [1, 7, 'on', 'spill']
 
-    async def async_turn_on(self, **kwargs: Any) -> None:
+    async def async_turn_on(self, percentage: int | None = None, preset_mode: str | None = None, **kwargs: Any) -> None:
         """Turn the zone on."""
         await self._controller.set_zone_status(self._device_id, self._zone_index, 'on')
         self.async_write_ha_state()
