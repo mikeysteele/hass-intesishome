@@ -1,10 +1,10 @@
-"""Support for IntesisACCloud Zone Switches."""
+"""Support for IntesisACCloud Zone Fans."""
 from __future__ import annotations
 
 import logging
 from typing import Any
 
-from homeassistant.components.switch import SwitchEntity
+from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -21,7 +21,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up IntesisACCloud switch entities."""
+    """Set up IntesisACCloud zone fan entities."""
     controller = hass.data[DOMAIN]["controller"][config_entry.unique_id]
     ih_devices = controller.get_devices()
     _LOGGER.debug("Found %s devices", len(ih_devices))
@@ -53,18 +53,18 @@ async def async_setup_entry(
                 continue
 
             # Add entity for valid zone
-            entities.append(IntesisZoneSwitch(controller, ih_device_id, zone_index, zone_friendly_index))
+            entities.append(IntesisZoneFan(controller, ih_device_id, zone_index, zone_friendly_index))
             zone_friendly_index += 1
 
     if entities:
         async_add_entities(entities)
 
 
-class IntesisZoneSwitch(SwitchEntity):
-    """Representation of an IntesisACCloud Zone Switch."""
+class IntesisZoneFan(FanEntity):
+    """Representation of an IntesisACCloud Zone Fan."""
 
     def __init__(self, manager, device_id: str, zone_index: int, zone_friendly_index: int) -> None:
-        """Initialize the switch."""
+        """Initialize the fan."""
         self._manager = manager
         self._controller: IntesisBase = manager.controller
         self._device_id = device_id
@@ -74,6 +74,7 @@ class IntesisZoneSwitch(SwitchEntity):
         self._device_name = str(device_name) if device_name is not None else "Intesis AC"
         self._attr_name = f"{self._device_name} Zone {zone_friendly_index}"
         self._attr_unique_id = f"{device_id}_zone_{zone_index}"
+        self._attr_supported_features = FanEntityFeature.TURN_ON | FanEntityFeature.TURN_OFF
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -96,12 +97,8 @@ class IntesisZoneSwitch(SwitchEntity):
 
         # 1 = On, 7 = Spill (but spill shouldn't be here if we filtered correctly,
         # unless it changed state dynamically to spill)
-        # If it changes to spill dynamically, it should technically be ON?
-        # User said: "Check number of zones... if status is spill... just don't create entity"
-        # Implies static check? Or dynamic?
-        # "zone_status" updates dynamically.
-        # If it becomes spill later, we probably should report it as ON if we already have the entity.
-        # But 'spill' implies it's open for safety. So ON is correct.
+        # If it changes to spill dynamically, it should technically be ON.
+        # Spill implies it's open for safety, so ON is correct.
         return state in [1, 7, 'on', 'spill']
 
     async def async_turn_on(self, **kwargs: Any) -> None:

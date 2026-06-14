@@ -8,7 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from .manager import IntesisManager
 DOMAIN = "intesisaccloud"
-PLATFORMS = ["climate", "switch"]
+PLATFORMS = ["climate", "fan"]
 
 import logging
 _LOGGER = logging.getLogger(__name__)
@@ -69,8 +69,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data[DOMAIN]["controller"][entry.unique_id] = manager
 
-    _LOGGER.debug("Forwarding entry setups for climate and switch")
-    await hass.config_entries.async_forward_entry_setups(entry, ["climate", "switch"])
+    _LOGGER.debug("Forwarding entry setups for climate and fan")
+    await hass.config_entries.async_forward_entry_setups(entry, ["climate", "fan"])
 
     return True
 

@@ -1,11 +1,11 @@
 from unittest.mock import MagicMock
 
 from custom_components.intesisaccloud import DOMAIN
-from custom_components.intesisaccloud.switch import IntesisZoneSwitch, async_setup_entry
+from custom_components.intesisaccloud.fan import IntesisZoneFan, async_setup_entry
 
 
-async def test_switch_setup_discovery(hass, mock_controller):
-    """Test discovery of zone switches."""
+async def test_fan_setup_discovery(hass, mock_controller):
+    """Test discovery of zone fans."""
     device_id = "12345"
     device_info = {
         "name": "Test AC",
@@ -41,7 +41,7 @@ async def test_switch_setup_discovery(hass, mock_controller):
     assert entities[0].name == "Test AC Zone 1"
     assert entities[1].name == "Test AC Zone 2"
 
-async def test_switch_operations(hass, mock_controller):
+async def test_fan_operations(hass, mock_controller):
     """Test turn on/off operations."""
     device_id = "12345"
     zone_index = 1
@@ -52,7 +52,7 @@ async def test_switch_operations(hass, mock_controller):
     mock_manager = MagicMock()
     mock_manager.controller = mock_controller
 
-    entity = IntesisZoneSwitch(mock_manager, device_id, zone_index, 1)
+    entity = IntesisZoneFan(mock_manager, device_id, zone_index, 1)
     entity.hass = hass
     entity.async_write_ha_state = MagicMock()
 
@@ -64,8 +64,8 @@ async def test_switch_operations(hass, mock_controller):
     await entity.async_turn_off()
     mock_controller.set_zone_status.assert_called_with(device_id, zone_index, 'off')
 
-async def test_switch_state(hass, mock_controller):
-    """Test switch state reporting."""
+async def test_fan_state(hass, mock_controller):
+    """Test fan state reporting."""
     device_id = "12345"
     zone_index = 1
 
@@ -75,7 +75,7 @@ async def test_switch_state(hass, mock_controller):
     mock_manager = MagicMock()
     mock_manager.controller = mock_controller
 
-    entity = IntesisZoneSwitch(mock_manager, device_id, zone_index, 1)
+    entity = IntesisZoneFan(mock_manager, device_id, zone_index, 1)
 
     # Test On (1)
     mock_controller.get_devices.return_value = {device_id: {"zone_status_1": 1}}
