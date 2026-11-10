@@ -73,13 +73,23 @@ async def test_fan_operations(hass, mock_controller):
     mock_controller.set_zone_status.assert_called_with(device_id, zone_index, 'off')
     assert entity.is_on is False
 
-    # Test that update callback clears optimistic state and reads controller
+    # Simulate an update callback where the controller still reports the old state (1 / on).
+    # The fan should hold optimistic state (False / off) and NOT bounce back to on.
     mock_controller.get_devices.return_value = {
         device_id: {"name": "Test AC", f"zone_status_{zone_index}": 1}
     }
     entity.async_schedule_update_ha_state = MagicMock()
     await entity.async_update_callback(device_id)
-    assert entity.is_on is True
+    assert entity.is_on is False
+
+    # When the controller catches up and reports 0 (matching optimistic False / off),
+    # the optimistic lock is cleared.
+    mock_controller.get_devices.return_value = {
+        device_id: {"name": "Test AC", f"zone_status_{zone_index}": 0}
+    }
+    await entity.async_update_callback(device_id)
+    assert entity.is_on is False
+    assert entity._is_on is None
 
 async def test_fan_state(hass, mock_controller):
     """Test fan state reporting."""

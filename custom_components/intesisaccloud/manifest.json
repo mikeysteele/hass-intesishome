@@ -7,6 +7,6 @@
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/mikeysteele/hass-intesishome/issues",
   "loggers": ["pyintesishome"],
-  "requirements": ["pyintesishome@git+https://github.com/mikeysteele/pyIntesisHome.git@1144d1d7add73c0a7e1849057cba634f1ccc6095"],
+  "requirements": ["pyintesishome@git+https://github.com/mikeysteele/pyIntesisHome.git@592934252e41761a33f752cd3a1e0abedb275236"],
   "version": "0.0.3"
 }

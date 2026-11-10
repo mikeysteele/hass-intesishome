@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 from homeassistant.components.fan import FanEntity, FanEntityFeature
@@ -76,6 +77,7 @@ class IntesisZoneFan(FanEntity):
         self._attr_unique_id = f"{device_id}_zone_{zone_index}"
         self._attr_supported_features = FanEntityFeature.TURN_ON | FanEntityFeature.TURN_OFF
         self._is_on: bool | None = None
+        self._is_on_time: float | None = None
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -95,30 +97,39 @@ class IntesisZoneFan(FanEntity):
     @property
     def is_on(self) -> bool | None:
         """Return True if zone is on."""
-        if self._is_on is not None:
-            return self._is_on
-
         devices = self._controller.get_devices()
         if self._device_id not in devices:
-            return None
+            return self._is_on
 
         state = devices[self._device_id].get(f"zone_status_{self._zone_index}")
+        current_state = state in [1, 7, 'on', 'spill'] if state is not None else None
 
-        # 1 = On, 7 = Spill (but spill shouldn't be here if we filtered correctly,
-        # unless it changed state dynamically to spill)
-        # If it changes to spill dynamically, it should technically be ON.
-        # Spill implies it's open for safety, so ON is correct.
-        return state in [1, 7, 'on', 'spill']
+        if self._is_on is not None:
+            if current_state is not None and current_state == self._is_on:
+                # Controller has caught up with user's action
+                self._is_on = None
+                self._is_on_time = None
+            elif self._is_on_time and (time.monotonic() - self._is_on_time < 90):
+                # Still within optimistic window waiting for cloud/hardware confirmation
+                return self._is_on
+            else:
+                # Optimistic window expired; revert to controller state
+                self._is_on = None
+                self._is_on_time = None
+
+        return current_state
 
     async def async_turn_on(self, percentage: int | None = None, preset_mode: str | None = None, **kwargs: Any) -> None:
         """Turn the zone on."""
         self._is_on = True
+        self._is_on_time = time.monotonic()
         self.async_write_ha_state()
         await self._controller.set_zone_status(self._device_id, self._zone_index, 'on')
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the zone off."""
         self._is_on = False
+        self._is_on_time = time.monotonic()
         self.async_write_ha_state()
         await self._controller.set_zone_status(self._device_id, self._zone_index, 'off')
 
@@ -133,5 +144,4 @@ class IntesisZoneFan(FanEntity):
     async def async_update_callback(self, device_id: str | None = None) -> None:
         """Update the entity's state."""
         if not device_id or self._device_id == device_id:
-            self._is_on = None
             self.async_schedule_update_ha_state(True)
