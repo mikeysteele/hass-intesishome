@@ -24,7 +24,10 @@ async def test_climate_entity_creation(hass, mock_controller):
 
     assert entity.name == "Test AC"
     assert entity.unique_id == device_id
-    assert entity.available is False  # explicit False init, updates to True on update
+    mock_controller.is_available = False
+    assert entity.available is False
+    mock_controller.is_available = True
+    assert entity.available is True
 
 async def test_climate_update(hass, mock_controller):
     """Test entity update from controller."""

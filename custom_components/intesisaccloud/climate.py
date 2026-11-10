@@ -340,8 +340,8 @@ class IntesisAC(ClimateEntity):
     async def async_update(self):
         """Copy values from controller dictionary to climate device."""
         # Update values from controller's device dictionary
-        self._connected = self._controller.is_connected
-        _LOGGER.debug("Climate entity update. Connected: %s", self._connected)
+        self._connected = self._controller.is_available
+        _LOGGER.debug("Climate entity update. Available: %s", self._connected)
 
         if not self._controller.get_device(self._device_id):
             _LOGGER.debug(
@@ -405,19 +405,15 @@ class IntesisAC(ClimateEntity):
 
     async def async_update_callback(self, device_id=None):
         """Let HA know there has been an update from the controller."""
-        # Track changes in connection state
-        if self._controller and not self._controller.is_connected and self._connected:
-            # Connection has dropped
-            self._connected = False
-            _LOGGER.info(
-                "Connection to %s API was lost",
-                self._device_type,
-            )
-
-        if self._controller.is_connected and not self._connected:
-            # Connection has been restored
-            self._connected = True
-            _LOGGER.debug("Connection to %s API was restored", self._device_type)
+        # Track availability transitions for logging. Follows is_available
+        # rather than is_connected: since pyintesishome 2.3 the push socket
+        # is opened only for commands and routinely closes.
+        available = self._controller.is_available
+        if self._connected and not available:
+            _LOGGER.info("No longer receiving state from the %s API", self._device_type)
+        elif available and not self._connected:
+            _LOGGER.debug("Receiving state from the %s API again", self._device_type)
+        self._connected = available
 
         if not device_id or self._device_id == device_id:
             # Update all devices if no device_id was specified
@@ -478,8 +474,8 @@ class IntesisAC(ClimateEntity):
 
     @property
     def available(self) -> bool:
-        """If the device hasn't been able to connect, mark as unavailable."""
-        return self._connected or self._connected is None
+        """Read availability live so stale state is reported promptly."""
+        return bool(self._controller.is_available)
 
     @property
     def current_temperature(self) -> float | None:

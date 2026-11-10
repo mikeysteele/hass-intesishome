@@ -1,7 +1,4 @@
 import logging
-import random
-from homeassistant.helpers.event import async_call_later
-from pyintesishome import IHConnectionError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,8 +39,13 @@ class IntesisManager:
 
     @property
     def is_connected(self):
-        """Return if connected."""
-        return self._connected
+        """Return if the controller is delivering state.
+
+        Mirrors the controller's is_available rather than its is_connected,
+        which since pyintesishome 2.3 only reports the on-demand command
+        socket and is False most of the time.
+        """
+        return self._connected and self.controller.is_available
 
     def get_devices(self):
         """Get devices from controller."""
@@ -65,52 +67,17 @@ class IntesisManager:
 
     async def async_update_callback(self, device_id=None):
         """Handle updates from the controller."""
+        # pyintesishome >= 2.3 keeps state flowing over HTTPS polling and
+        # opens the command socket on demand, so there is no connection to
+        # babysit here. Availability transitions are logged by following
+        # is_available, which only goes False once state stops arriving.
+        available = self.controller.is_available
+        if self._connected and not available:
+            _LOGGER.info("No longer receiving state from the %s API", self.device_type)
+        elif available and not self._connected:
+            _LOGGER.debug("Receiving state from the %s API again", self.device_type)
+        self._connected = available
+
         # Propagate update to listeners
         for callback in self._update_callbacks:
             await callback(device_id)
-
-        # Track changes in connection state
-        if self.controller and not self.controller.is_connected and self._connected:
-            # Connection has dropped
-            self._connected = False
-            reconnect_seconds = 30
-            if self.device_type in self.cloud_devices:
-                # Add a random delay for cloud connections
-                reconnect_seconds = random.randrange(10, 30)
-
-            _LOGGER.info(
-                "Connection to %s API was lost. Reconnecting in %i seconds",
-                self.device_type,
-                reconnect_seconds,
-            )
-
-            async def try_connect(retries):
-                MAX_WAIT_TIME = 300
-                try:
-                    await self.controller.connect()
-                    self._connected = True
-                    _LOGGER.info("Reconnected to %s API", self.device_type)
-                    # Notify listeners of reconnection
-                    for callback in self._update_callbacks:
-                        await callback()
-                except IHConnectionError:
-                    wait_time = min(2**retries, MAX_WAIT_TIME)
-                    _LOGGER.info(
-                        "Failed to reconnect to %s API. Retrying in %i seconds",
-                        self.device_type,
-                        wait_time,
-                    )
-                    
-                    async def retry_callback(_now):
-                        await try_connect(retries + 1)
-                        
-                    async_call_later(self.hass, wait_time, retry_callback)
-
-            async def initial_callback(_now):
-                await try_connect(0)
-
-            async_call_later(self.hass, reconnect_seconds, initial_callback)
-
-        if self.controller.is_connected and not self._connected:
-             self._connected = True
-             _LOGGER.debug("Connection to %s API was restored", self.device_type)

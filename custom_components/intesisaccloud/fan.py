@@ -87,6 +87,11 @@ class IntesisZoneFan(FanEntity):
         )
 
     @property
+    def available(self) -> bool:
+        """Return True while the controller is delivering state."""
+        return bool(self._controller.is_available)
+
+    @property
     def is_on(self) -> bool | None:
         """Return True if zone is on."""
         devices = self._controller.get_devices()

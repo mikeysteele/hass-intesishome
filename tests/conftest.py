@@ -37,6 +37,7 @@ def mock_controller():
     controller = MagicMock()
     controller.get_devices.return_value = {}
     controller.is_connected = True
+    controller.is_available = True
     controller.connect = AsyncMock()
     controller.stop = AsyncMock()
     controller.poll_status = AsyncMock()

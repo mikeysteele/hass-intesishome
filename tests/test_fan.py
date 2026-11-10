@@ -99,3 +99,18 @@ async def test_fan_state(hass, mock_controller):
     # Test 'on' string
     mock_controller.get_devices.return_value = {device_id: {"zone_status_1": "on"}}
     assert entity.is_on is True
+
+
+async def test_fan_availability_follows_controller(hass, mock_controller):
+    """Zone fans are unavailable when the controller stops delivering state."""
+    from custom_components.intesisaccloud.fan import IntesisZoneFan
+
+    mock_controller.get_devices.return_value = {"123": {"name": "AC"}}
+    manager = MagicMock()
+    manager.controller = mock_controller
+    fan = IntesisZoneFan(manager, "123", 1, 1)
+
+    mock_controller.is_available = True
+    assert fan.available
+    mock_controller.is_available = False
+    assert not fan.available
