@@ -59,16 +59,27 @@ async def test_fan_operations(hass, mock_controller):
     # Test Turn On (direct call, no args)
     await entity.async_turn_on()
     mock_controller.set_zone_status.assert_called_with(device_id, zone_index, 'on')
+    assert entity.is_on is True
 
     # Test Turn On the way HA's fan service dispatcher actually calls it —
     # it passes percentage and preset_mode as positional args even when None
     mock_controller.set_zone_status.reset_mock()
     await entity.async_turn_on(None, None)
     mock_controller.set_zone_status.assert_called_with(device_id, zone_index, 'on')
+    assert entity.is_on is True
 
     # Test Turn Off
     await entity.async_turn_off()
     mock_controller.set_zone_status.assert_called_with(device_id, zone_index, 'off')
+    assert entity.is_on is False
+
+    # Test that update callback clears optimistic state and reads controller
+    mock_controller.get_devices.return_value = {
+        device_id: {"name": "Test AC", f"zone_status_{zone_index}": 1}
+    }
+    entity.async_schedule_update_ha_state = MagicMock()
+    await entity.async_update_callback(device_id)
+    assert entity.is_on is True
 
 async def test_fan_state(hass, mock_controller):
     """Test fan state reporting."""
@@ -77,7 +88,7 @@ async def test_fan_state(hass, mock_controller):
 
     # Mock devices for __init__
     mock_controller.get_devices.return_value = {device_id: {"name": "Test AC"}}
-    
+
     mock_manager = MagicMock()
     mock_manager.controller = mock_controller
 

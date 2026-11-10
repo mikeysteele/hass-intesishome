@@ -7,8 +7,8 @@ from typing import Any
 from homeassistant.components.fan import FanEntity, FanEntityFeature
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyintesishome import IntesisBase
 
 from . import DOMAIN
@@ -75,6 +75,7 @@ class IntesisZoneFan(FanEntity):
         self._attr_name = f"{self._device_name} Zone {zone_friendly_index}"
         self._attr_unique_id = f"{device_id}_zone_{zone_index}"
         self._attr_supported_features = FanEntityFeature.TURN_ON | FanEntityFeature.TURN_OFF
+        self._is_on: bool | None = None
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -94,6 +95,9 @@ class IntesisZoneFan(FanEntity):
     @property
     def is_on(self) -> bool | None:
         """Return True if zone is on."""
+        if self._is_on is not None:
+            return self._is_on
+
         devices = self._controller.get_devices()
         if self._device_id not in devices:
             return None
@@ -108,13 +112,15 @@ class IntesisZoneFan(FanEntity):
 
     async def async_turn_on(self, percentage: int | None = None, preset_mode: str | None = None, **kwargs: Any) -> None:
         """Turn the zone on."""
-        await self._controller.set_zone_status(self._device_id, self._zone_index, 'on')
+        self._is_on = True
         self.async_write_ha_state()
+        await self._controller.set_zone_status(self._device_id, self._zone_index, 'on')
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the zone off."""
-        await self._controller.set_zone_status(self._device_id, self._zone_index, 'off')
+        self._is_on = False
         self.async_write_ha_state()
+        await self._controller.set_zone_status(self._device_id, self._zone_index, 'off')
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to updates."""
@@ -127,4 +133,5 @@ class IntesisZoneFan(FanEntity):
     async def async_update_callback(self, device_id: str | None = None) -> None:
         """Update the entity's state."""
         if not device_id or self._device_id == device_id:
+            self._is_on = None
             self.async_schedule_update_ha_state(True)
