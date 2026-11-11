@@ -257,11 +257,13 @@ class IntesisAC(ClimateEntity):
     async def async_turn_on(self) -> None:
         """Turn device on."""
         self._power = True
+        self.async_write_ha_state()
         await self._controller.set_power_on(self._device_id)
 
     async def async_turn_off(self) -> None:
         """Turn device off."""
         self._power = False
+        self.async_write_ha_state()
         await self._controller.set_power_off(self._device_id)
 
     async def async_toggle(self) -> None:
@@ -278,25 +280,28 @@ class IntesisAC(ClimateEntity):
 
         if temperature := kwargs.get(ATTR_TEMPERATURE):
             _LOGGER.debug("Setting %s to %s degrees", self._device_type, temperature)
-            await self._controller.set_temperature(self._device_id, temperature)
             self._target_temp = temperature
-
-        # Write updated temperature to HA state to avoid flapping (API confirmation is slow)
-        self.async_write_ha_state()
+            self.async_write_ha_state()
+            await self._controller.set_temperature(self._device_id, temperature)
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set operation mode."""
         _LOGGER.debug("Setting %s to %s mode", self._device_type, hvac_mode)
         if hvac_mode == HVACMode.OFF:
             self._power = False
-            await self._controller.set_power_off(self._device_id)
-            # Write changes to HA, API can be slow to push changes
+            self._hvac_mode = hvac_mode
             self.async_write_ha_state()
+            await self._controller.set_power_off(self._device_id)
             return
 
         # First check device is turned on
-        if not self._controller.is_on(self._device_id):
+        if not self._power:
             self._power = True
+
+        self._hvac_mode = hvac_mode
+        self.async_write_ha_state()
+
+        if not self._controller.is_on(self._device_id):
             await self._controller.set_power_on(self._device_id)
 
         # Set the mode
@@ -306,25 +311,23 @@ class IntesisAC(ClimateEntity):
         if self._target_temp:
             await self._controller.set_temperature(self._device_id, self._target_temp)
 
-        # Updates can take longer than 2 seconds, so update locally
-        self._hvac_mode = hvac_mode
-        self.async_write_ha_state()
-
     async def async_set_fan_mode(self, fan_mode):
         """Set fan mode (from quiet, low, medium, high, auto)."""
-        await self._controller.set_fan_speed(self._device_id, fan_mode)
-
-        # Updates can take longer than 2 seconds, so update locally
         self._fan_speed = fan_mode
         self.async_write_ha_state()
+        await self._controller.set_fan_speed(self._device_id, fan_mode)
 
     async def async_set_preset_mode(self, preset_mode):
         """Set preset mode."""
-        ih_preset_mode = MAP_PRESET_MODE_TO_IH.get(preset_mode)
-        await self._controller.set_preset_mode(self._device_id, ih_preset_mode)
+        self._preset = preset_mode
+        self.async_write_ha_state()
+        if ih_preset_mode := MAP_PRESET_MODE_TO_IH.get(preset_mode):
+            await self._controller.set_preset_mode(self._device_id, ih_preset_mode)
 
     async def async_set_swing_mode(self, swing_mode):
         """Set the vertical vane."""
+        self._vvane = MAP_SWING_TO_IH.get(swing_mode, IH_SWING_STOP)
+        self.async_write_ha_state()
         if swingmode := MAP_SWING_TO_IH.get(swing_mode):
             await self._controller.set_vertical_vane(
                 self._device_id, swingmode
@@ -332,6 +335,8 @@ class IntesisAC(ClimateEntity):
 
     async def async_set_swing_horizontal_mode(self, swing_mode):
         """Set the horizontal vane."""
+        self._hvane = MAP_HORIZONTAL_SWING_TO_IH.get(swing_mode, IH_SWING_STOP)
+        self.async_write_ha_state()
         if swingmode := MAP_HORIZONTAL_SWING_TO_IH.get(swing_mode):
             await self._controller.set_horizontal_vane(
                 self._device_id, swingmode

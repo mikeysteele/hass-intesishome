@@ -1,4 +1,10 @@
-from homeassistant.components.climate import HVACMode
+from unittest.mock import MagicMock
+
+from homeassistant.components.climate import (
+    SWING_HORIZONTAL,
+    SWING_VERTICAL,
+    HVACMode,
+)
 
 from custom_components.intesisaccloud.climate import IntesisAC
 
@@ -8,7 +14,7 @@ async def test_climate_entity_creation(hass, mock_controller):
     device_id = "12345"
     device_info = {
         "name": "Test AC",
-        "widgets": [1, 2] # Mock widgets
+        "widgets": [1, 2],  # Mock widgets
     }
 
     # Mock controller methods used in __init__
@@ -28,6 +34,7 @@ async def test_climate_entity_creation(hass, mock_controller):
     assert entity.available is False
     mock_controller.is_available = True
     assert entity.available is True
+
 
 async def test_climate_update(hass, mock_controller):
     """Test entity update from controller."""
@@ -67,3 +74,55 @@ async def test_climate_update(hass, mock_controller):
     assert entity.current_temperature == 22.0
     assert entity.target_temperature == 24.0
     assert entity.hvac_mode == HVACMode.COOL
+
+
+async def test_climate_optimistic_operations(hass, mock_controller):
+    """Test that operations update state optimistically immediately."""
+    device_id = "12345"
+    device_info = {"name": "Test AC", "climate_working_mode": True}
+
+    mock_controller.device_type = "IntesisHome"
+    mock_controller.has_setpoint_control.return_value = True
+    mock_controller.has_vertical_swing.return_value = True
+    mock_controller.has_horizontal_swing.return_value = True
+    mock_controller.get_fan_speed_list.return_value = ["auto", "low", "high"]
+    mock_controller.get_mode_list.return_value = ["cool", "heat", "auto"]
+    mock_controller.is_on.return_value = True
+
+    entity = IntesisAC(device_id, device_info, mock_controller)
+    entity.hass = hass
+    entity.async_write_ha_state = MagicMock()
+
+    # Test Turn On
+    await entity.async_turn_on()
+    assert entity._power is True
+    mock_controller.set_power_on.assert_called_with(device_id)
+
+    # Set Mode
+    await entity.async_set_hvac_mode(HVACMode.COOL)
+    assert entity.hvac_mode == HVACMode.COOL
+
+    # Test Fan Mode
+    await entity.async_set_fan_mode("high")
+    assert entity.fan_mode == "high"
+    mock_controller.set_fan_speed.assert_called_with(device_id, "high")
+
+    # Test Temperature
+    await entity.async_set_temperature(temperature=21.0)
+    assert entity.target_temperature == 21.0
+    mock_controller.set_temperature.assert_called_with(device_id, 21.0)
+
+    # Test Preset Mode
+    await entity.async_set_preset_mode("eco")
+    assert entity.preset_mode == "eco"
+    mock_controller.set_preset_mode.assert_called_with(device_id, "eco")
+
+    # Test Swing Mode
+    await entity.async_set_swing_mode(SWING_VERTICAL)
+    assert entity.swing_mode == SWING_VERTICAL
+    mock_controller.set_vertical_vane.assert_called_with(device_id, "swing")
+
+    # Test Horizontal Swing Mode
+    await entity.async_set_swing_horizontal_mode(SWING_HORIZONTAL)
+    assert entity.swing_horizontal_mode == SWING_HORIZONTAL
+    mock_controller.set_horizontal_vane.assert_called_with(device_id, "swing")

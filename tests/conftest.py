@@ -42,4 +42,12 @@ def mock_controller():
     controller.stop = AsyncMock()
     controller.poll_status = AsyncMock()
     controller.set_zone_status = AsyncMock()
+    controller.set_fan_speed = AsyncMock()
+    controller.set_temperature = AsyncMock()
+    controller.set_mode = AsyncMock()
+    controller.set_power_on = AsyncMock()
+    controller.set_power_off = AsyncMock()
+    controller.set_preset_mode = AsyncMock()
+    controller.set_vertical_vane = AsyncMock()
+    controller.set_horizontal_vane = AsyncMock()
     return controller
